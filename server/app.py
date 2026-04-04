@@ -4,6 +4,10 @@ from tasks import TASKS
 
 app = FastAPI()
 
+@app.get("/")
+def home():
+    return {"message": "API is running 🚀"}
+
 env = None
 
 @app.post("/reset")
