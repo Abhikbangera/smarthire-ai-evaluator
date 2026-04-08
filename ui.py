@@ -1,6 +1,43 @@
+import sys
+import os
 import gradio as gr
+
+# Ensure local project root is first on sys.path so our
+# local agents/ folder wins over any installed 'agents' package.
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 from env.base_env import ResumeEnv
-from agents.baseline_agent import act
+from env.models import DecisionAction, RankingAction, Observation
+
+
+# ---------------------------------------------------------------------------
+# Inline baseline agent (avoids agents/ import collision with site-packages)
+# ---------------------------------------------------------------------------
+
+_SHORTLIST_KW = ["python", "machine learning", "kubernetes", "docker", "sql"]
+_REJECT_KW    = ["photoshop", "illustrator", "crm", "helpdesk", "printer", "sales"]
+
+
+def _score_resume(resume: str) -> int:
+    text = resume.lower()
+    return (sum(1 for kw in _SHORTLIST_KW if kw in text)
+          - sum(2 for kw in _REJECT_KW    if kw in text))
+
+
+def act(observation: Observation):
+    if observation.task_type in ("easy", "medium"):
+        decisions = []
+        for resume in observation.resumes:
+            s = _score_resume(resume)
+            decisions.append("shortlist" if s >= 2 else "maybe" if s == 1 else "reject")
+        return DecisionAction(decisions=decisions)
+    else:
+        scored = sorted(enumerate(observation.resumes),
+                        key=lambda x: _score_resume(x[1]), reverse=True)
+        return RankingAction(ranking=[i for i, _ in scored])
+
 
 # ---------------------------------------------------------------------------
 # Global state
@@ -197,6 +234,7 @@ def run_step():
 
     action = act(_observation)
     obs, reward, done, info = _env.step(action)
+
     score = reward.score
     task_type = _observation.task_type
 
@@ -229,7 +267,7 @@ def run_step():
     lines += [
         "",
         "  ── Reasoning ────────────────────────────",
-        f"  {reward.reasoning}",    
+        f"  {reward.reasoning}",
     ]
 
     status = f"✅  Evaluation complete  ·  Score: {score_pct}  ·  Done: {done}"
