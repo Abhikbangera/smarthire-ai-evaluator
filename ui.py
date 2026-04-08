@@ -23,14 +23,15 @@ def run_step():
     if env is None:
         return "Please initialize first ❌"
     
-    # Dummy decisions (can replace with LLM later)
-    decisions = ["shortlist"] * len(current_observation["resumes"])
+    try:
+        decisions = ["shortlist"] * len(current_observation["resumes"])
+        
+        obs, reward, done, info = env.step(decisions)
+        
+        return f"Score: {reward.score}\nReason: {reward.reasoning}"
     
-    result = env.step({"decisions": decisions})
-    
-    reward = result.reward
-    
-    return f"Score: {reward.score}\nReason: {reward.reasoning}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 SmartHire: AI Resume Evaluator")
