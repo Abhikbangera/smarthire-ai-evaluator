@@ -24,7 +24,15 @@ def run_step():
         return "Please initialize first ❌"
     
     try:
-        decisions = ["shortlist"] * len(current_observation["resumes"])
+        decisions = []
+
+        for resume in current_observation["resumes"]:
+            if "Python" in resume and "Machine Learning" in resume:
+                decisions.append("shortlist")
+            elif "Python" in resume or "SQL" in resume:
+                decisions.append("maybe")
+            else:
+                decisions.append("reject")
         
         obs, reward, done, info = env.step(decisions)
         
