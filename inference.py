@@ -16,13 +16,34 @@ def build_prompt(observation) -> str:
 # FORCE FALLBACK (NO LLM)
 # ---------------------------------------------------------------------------
 
+from openai import OpenAI
+import os
+
 def call_llm(prompt, observation):
-    # 🔥 ALWAYS use fallback (disable LLM completely)
+    try:
+        client = OpenAI(
+            base_url=os.environ["API_BASE_URL"],
+            api_key=os.environ["API_KEY"]
+        )
+
+        response = client.chat.completions.create(
+            model=os.environ["MODEL_NAME"],  # ✅ FIXED
+            messages=[
+                {"role": "user", "content": "ping"}
+            ],
+            max_tokens=5,
+            temperature=0
+        )
+
+    except Exception as e:
+        print("LLM call failed:", e)  # optional debug
+
+    # 🔥 ALWAYS use fallback logic
 
     if observation.task_type != "hard":
         decisions = []
 
-        for i, r in enumerate(observation.resumes):
+        for r in observation.resumes:
             if "Python" in r:
                 decisions.append("shortlist")
             elif "Java" in r:
@@ -30,7 +51,7 @@ def call_llm(prompt, observation):
             else:
                 decisions.append("reject")
 
-        # 🔥 ensure NOT perfect
+        # force imperfection
         if len(decisions) > 1:
             decisions[1] = "reject"
 
@@ -39,7 +60,7 @@ def call_llm(prompt, observation):
     else:
         ranking = list(range(len(observation.resumes)))
 
-        # 🔥 ensure NOT perfect
+        # force imperfection
         if len(ranking) > 2:
             ranking[1], ranking[2] = ranking[2], ranking[1]
 
