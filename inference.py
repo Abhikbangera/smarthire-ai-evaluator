@@ -10,14 +10,17 @@ from env.models import DecisionAction, RankingAction
 # Client setup
 # ---------------------------------------------------------------------------
 
-API_BASE_URL = os.environ["API_BASE_URL"]
-MODEL_NAME = os.environ["MODEL_NAME"]
-HF_TOKEN = os.environ["HF_TOKEN"]
+API_BASE_URL = os.getenv("API_BASE_URL", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+HF_TOKEN = os.getenv("HF_TOKEN", "")
 
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=HF_TOKEN,
-)
+client = None
+
+if API_BASE_URL and HF_TOKEN:
+    client = OpenAI(
+        base_url=API_BASE_URL,
+        api_key=HF_TOKEN,
+    )
 
 # ---------------------------------------------------------------------------
 # Prompt builder
@@ -56,6 +59,9 @@ def build_prompt(observation) -> str:
 
 def call_llm(prompt, observation):
     try:
+        if client is None:
+            raise Exception("No API config")
+
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt}],
