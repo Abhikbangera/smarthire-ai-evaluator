@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Request
+from fastapi import FastAPI, APIRouter, Body
 from env.base_env import ResumeEnv
 from tasks import TASKS
 
@@ -10,18 +10,15 @@ router = APIRouter(prefix="/openenv")
 env = None
 
 # -------------------------------
-# RESET
+# RESET (BODY OPTIONAL)
 # -------------------------------
 @router.post("/reset")
 @router.post("/reset/")
-async def reset(request: Request):
+def reset(data: dict = Body(default={})):
     global env
 
-    try:
-        data = await request.json()
-        if not isinstance(data, dict):
-            data = {}
-    except:
+    # Safe handling of missing/invalid body
+    if not isinstance(data, dict):
         data = {}
 
     task_name = data.get("task", "easy")
@@ -36,21 +33,18 @@ async def reset(request: Request):
 
 
 # -------------------------------
-# STEP
+# STEP (BODY OPTIONAL)
 # -------------------------------
 @router.post("/step")
 @router.post("/step/")
-async def step(request: Request):
+def step(action: dict = Body(default={})):
     global env
 
     if env is None:
         return {"error": "Call /reset first"}
 
-    try:
-        action = await request.json()
-        if not isinstance(action, dict):
-            action = {}
-    except:
+    # Ensure valid dict
+    if not isinstance(action, dict):
         action = {}
 
     obs, reward, done, info = env.step(action)
@@ -78,12 +72,12 @@ def state():
 
 
 # -------------------------------
-# OPTIONAL ROOT (for testing)
+# ROOT (optional)
 # -------------------------------
 @app.get("/")
 def root():
     return {"message": "API is running"}
 
 
-# Include router
+# Attach router
 app.include_router(router)
