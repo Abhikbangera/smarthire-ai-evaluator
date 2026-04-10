@@ -1,16 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from env.base_env import ResumeEnv
 from tasks import TASKS
 
 app = FastAPI()
 
-@app.get("/")
-def home():
-    return {"message": "API is running 🚀"}
+# 👇 ADD THIS
+router = APIRouter(prefix="/openenv")
 
 env = None
 
-@app.post("/reset")
+@router.post("/reset")
 def reset(data: dict):
     global env
 
@@ -25,7 +24,7 @@ def reset(data: dict):
     return observation.model_dump()
 
 
-@app.post("/step")
+@router.post("/step")
 def step(action: dict):
     global env
 
@@ -42,7 +41,7 @@ def step(action: dict):
     }
 
 
-@app.get("/state")
+@router.get("/state")
 def state():
     global env
 
@@ -50,3 +49,7 @@ def state():
         return {"error": "No active environment"}
 
     return env.state()
+
+
+# 👇 ADD THIS LINE AT THE END
+app.include_router(router)
