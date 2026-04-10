@@ -17,7 +17,6 @@ env = None
 def reset(data: dict = Body(default={})):
     global env
 
-    # Safe handling of missing/invalid body
     if not isinstance(data, dict):
         data = {}
 
@@ -29,7 +28,9 @@ def reset(data: dict = Body(default={})):
     env = ResumeEnv(task_name)
     observation = env.reset()
 
-    return observation.model_dump()
+    return {
+        "observation": observation.model_dump()
+    }
 
 
 # -------------------------------
@@ -43,7 +44,6 @@ def step(action: dict = Body(default={})):
     if env is None:
         return {"error": "Call /reset first"}
 
-    # Ensure valid dict
     if not isinstance(action, dict):
         action = {}
 
