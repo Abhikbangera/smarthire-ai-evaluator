@@ -1,6 +1,8 @@
 from fastapi import FastAPI, APIRouter, Body
 from env.base_env import ResumeEnv
 from tasks import TASKS
+import uvicorn
+
 
 app = FastAPI()
 
@@ -12,6 +14,8 @@ env = None
 # -------------------------------
 # RESET (BODY OPTIONAL)
 # -------------------------------
+# RESET (both paths)
+@app.post("/reset")
 @router.post("/reset")
 @router.post("/reset/")
 def reset(data: dict = Body(default={})):
@@ -36,6 +40,7 @@ def reset(data: dict = Body(default={})):
 # -------------------------------
 # STEP (BODY OPTIONAL)
 # -------------------------------
+@app.post("/step")
 @router.post("/step")
 @router.post("/step/")
 def step(action: dict = Body(default={})):
@@ -60,6 +65,7 @@ def step(action: dict = Body(default={})):
 # -------------------------------
 # STATE
 # -------------------------------
+@app.get("/state")
 @router.get("/state")
 @router.get("/state/")
 def state():
@@ -81,3 +87,10 @@ def root():
 
 # Attach router
 app.include_router(router)
+
+def main():
+    uvicorn.run(app, host="0.0.0.0", port=7860)
+
+
+if __name__ == "__main__":
+    main()

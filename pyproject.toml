@@ -1,0 +1,17 @@
+[project]
+name = "resume-screening-env"
+version = "0.1.0"
+description = "OpenEnv resume screening environment"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "openenv>=0.1.13,<0.2.0"
+]
+
+[tool.setuptools]
+packages = ["env", "tasks", "server"]
+
+# 🔥 REQUIRED
+[project.scripts]
+server = "server.app:main"
