@@ -13,6 +13,7 @@ env = None
 # RESET
 # -------------------------------
 @router.post("/reset")
+@router.post("/reset/")
 async def reset(request: Request):
     global env
 
@@ -38,6 +39,7 @@ async def reset(request: Request):
 # STEP
 # -------------------------------
 @router.post("/step")
+@router.post("/step/")
 async def step(request: Request):
     global env
 
@@ -65,6 +67,7 @@ async def step(request: Request):
 # STATE
 # -------------------------------
 @router.get("/state")
+@router.get("/state/")
 def state():
     global env
 
