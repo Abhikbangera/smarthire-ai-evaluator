@@ -63,21 +63,29 @@ class HardTask:
     def grade(self, action) -> float:
         # validate action object
         if not hasattr(action, "ranking") or action.ranking is None:
-            return 0.0
+            return 0.01  # avoid 0.0
 
         ranking = action.ranking
 
         # validate length
         if len(ranking) != len(GROUND_TRUTH):
-            return 0.0
+            return 0.01
 
-        # validate permutation (must contain all indices exactly once)
+        # validate permutation
         if sorted(ranking) != list(range(len(GROUND_TRUTH))):
-            return 0.0
+            return 0.01
 
         correct = sum(
             1 for i, j in enumerate(ranking)
             if j == GROUND_TRUTH[i]
         )
 
-        return round(correct / len(GROUND_TRUTH), 4)
+        score = correct / len(GROUND_TRUTH)
+
+        # 🔥 enforce strict (0,1)
+        if score <= 0.0:
+            score = 0.01
+        elif score >= 1.0:
+            score = 0.99
+
+        return round(score, 4)

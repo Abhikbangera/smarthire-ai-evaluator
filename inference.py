@@ -78,13 +78,17 @@ def call_llm(prompt, observation):
 
 
             decisions = []
-            for r in observation.resumes:
+            for i, r in enumerate(observation.resumes):
                 if "Python" in r:
                     decisions.append("shortlist")
                 elif "Java" in r:
                     decisions.append("maybe")
                 else:
                     decisions.append("reject")
+
+            # 🔥 introduce slight imperfection
+            if len(decisions) > 0:
+                decisions[0] = "maybe"  # force 1 mistake
 
             return str({"decisions": decisions})
 

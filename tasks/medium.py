@@ -6,59 +6,40 @@ TASK_TYPE = "medium"
 
 INSTRUCTION = (
     "Review each resume and decide: 'shortlist', 'maybe', or 'reject'. "
-    "Shortlist candidates who match most required skills. "
-    "Use 'maybe' for partial matches. "
-    "Reject candidates with no relevant skills."
+    "Shortlist strong matches, reject weak ones, and use 'maybe' for partial matches. "
+    "Consider both required and preferred skills."
 )
 
 JOB_DESCRIPTION = (
-    "Hiring a Data Scientist. "
-    "Required skills: Python, Machine Learning, SQL. "
-    "Nice to have: TensorFlow, data visualization."
+    "We are hiring a Full Stack Developer. "
+    "Required: JavaScript, React, Node.js. "
+    "Preferred: SQL, AWS, 2+ years experience."
 )
 
 RESUMES = [
     (
-        "Diana Prince | Data Scientist\n"
-        "Skills: Python, Machine Learning, SQL, TensorFlow, Matplotlib\n"
-        "Experience: 4 years in ML model development and deployment."
+        "John Doe | Full Stack Developer\n"
+        "Skills: JavaScript, React, Node.js, SQL\n"
+        "Experience: 3 years building web applications."
     ),
     (
-        "Ethan Hunt | Data Analyst\n"
-        "Skills: Python, SQL, Excel, Tableau\n"
-        "Experience: 3 years in business intelligence and reporting."
+        "Jane Smith | Frontend Developer\n"
+        "Skills: HTML, CSS, JavaScript, React\n"
+        "Experience: 2 years working on UI components."
     ),
     (
-        "Fiona Green | Research Engineer\n"
-        "Skills: Machine Learning, R, MATLAB, Statistics\n"
-        "Experience: 2 years in academic ML research."
+        "Sam Wilson | Backend Developer\n"
+        "Skills: Node.js, Express, MongoDB\n"
+        "Experience: 2 years in backend services."
     ),
     (
-        "George Hall | Sales Manager\n"
-        "Skills: CRM tools, negotiation, customer acquisition, Excel\n"
-        "Experience: 6 years in B2B sales and account management."
-    ),
-    (
-        "Hannah Kim | ML Engineer\n"
-        "Skills: Python, Machine Learning, SQL, scikit-learn, PyTorch\n"
-        "Experience: 5 years building and shipping ML pipelines."
+        "Chris Evans | Software Engineer\n"
+        "Skills: Java, Spring Boot\n"
+        "Experience: 3 years in enterprise applications."
     ),
 ]
 
-GROUND_TRUTH: List[str] = ["shortlist", "maybe", "maybe", "reject", "shortlist"]
-
-
-_PARTIAL_CREDIT = {
-    ("shortlist", "shortlist"): 1.0,
-    ("shortlist", "maybe"):     0.5,
-    ("shortlist", "reject"):    0.0,
-    ("maybe",     "shortlist"): 0.5,
-    ("maybe",     "maybe"):     1.0,
-    ("maybe",     "reject"):    0.5,
-    ("reject",    "shortlist"): 0.0,
-    ("reject",    "maybe"):     0.5,
-    ("reject",    "reject"):    1.0,
-}
+GROUND_TRUTH: List[str] = ["shortlist", "maybe", "maybe", "reject"]
 
 
 class MediumTask:
@@ -77,16 +58,25 @@ class MediumTask:
     def grade(self, action) -> float:
         # validate action
         if not hasattr(action, "decisions") or action.decisions is None:
-            return 0.0
+            return 0.01
 
         decisions = action.decisions
 
+        # validate length
         if len(decisions) != len(GROUND_TRUTH):
-            return 0.0
+            return 0.01
 
-        total = sum(
-            _PARTIAL_CREDIT.get((truth, pred), 0.0)
-            for pred, truth in zip(decisions, GROUND_TRUTH)
+        correct = sum(
+            1 for pred, truth in zip(decisions, GROUND_TRUTH)
+            if pred == truth
         )
 
-        return round(total / len(GROUND_TRUTH), 4)
+        score = correct / len(GROUND_TRUTH)
+
+        # 🔥 enforce strict (0,1)
+        if score <= 0.0:
+            score = 0.01
+        elif score >= 1.0:
+            score = 0.99
+
+        return round(score, 4)
