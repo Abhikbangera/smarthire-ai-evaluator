@@ -5,43 +5,19 @@ from env.models import Observation
 TASK_TYPE = "hard"
 
 INSTRUCTION = (
-    "Rank the candidates from most to least suitable for the role. "
-    "Return a list of resume indices ordered by relevance (best first). "
-    "Consider years of experience, skill match, and seniority."
+    "Rank the candidates from most to least suitable for the role."
 )
 
 JOB_DESCRIPTION = (
-    "Hiring a Senior DevOps Engineer. "
-    "Required: Kubernetes, CI/CD, Docker, Linux. "
-    "Preferred: AWS or GCP, Terraform, 4+ years experience."
+    "Senior DevOps Engineer: Kubernetes, CI/CD, Docker, Linux, AWS"
 )
 
 RESUMES = [
-    (
-        "Ivan Drago | Senior DevOps Engineer\n"
-        "Skills: Kubernetes, Docker, CI/CD, Linux, AWS, Terraform\n"
-        "Experience: 7 years in platform engineering and cloud infrastructure."
-    ),
-    (
-        "Julia Roberts | DevOps Engineer\n"
-        "Skills: Kubernetes, Docker, CI/CD, Linux\n"
-        "Experience: 4 years managing deployment pipelines."
-    ),
-    (
-        "Kevin Hart | Systems Administrator\n"
-        "Skills: Linux, Docker, Bash scripting, Nagios\n"
-        "Experience: 3 years in server administration."
-    ),
-    (
-        "Laura Palmer | Cloud Support Engineer\n"
-        "Skills: AWS basics, ticketing systems, networking fundamentals\n"
-        "Experience: 2 years in cloud support roles."
-    ),
-    (
-        "Mike Tyson | IT Helpdesk Technician\n"
-        "Skills: Windows troubleshooting, Active Directory, printer support\n"
-        "Experience: 1 year in end-user IT support."
-    ),
+    "Strong DevOps (7 yrs, all skills)",
+    "Mid DevOps (4 yrs, most skills)",
+    "SysAdmin (3 yrs, partial)",
+    "Support (2 yrs, minimal)",
+    "Helpdesk (1 yr, irrelevant)",
 ]
 
 GROUND_TRUTH: List[int] = [0, 1, 2, 3, 4]
@@ -61,19 +37,16 @@ class HardTask:
         }
 
     def grade(self, action) -> float:
-        # validate action object
         if not hasattr(action, "ranking") or action.ranking is None:
-            return 0.01  # avoid 0.0
+            return 0.5
 
         ranking = action.ranking
 
-        # validate length
         if len(ranking) != len(GROUND_TRUTH):
-            return 0.01
+            return 0.5
 
-        # validate permutation
         if sorted(ranking) != list(range(len(GROUND_TRUTH))):
-            return 0.01
+            return 0.5
 
         correct = sum(
             1 for i, j in enumerate(ranking)
@@ -82,10 +55,10 @@ class HardTask:
 
         score = correct / len(GROUND_TRUTH)
 
-        # 🔥 enforce strict (0,1)
-        if score <= 0.0:
-            score = 0.01
-        elif score >= 1.0:
-            score = 0.99
+        # 🔥 clamp
+        if score <= 0:
+            return 0.01
+        if score >= 1:
+            return 0.99
 
         return round(score, 4)

@@ -52,16 +52,23 @@ class EasyTask:
 
     def grade(self, action) -> float:
         if not hasattr(action, "decisions") or action.decisions is None:
-            return 0.0
+            return 0.01
 
         decisions = action.decisions
 
         if len(decisions) != len(GROUND_TRUTH):
-            return 0.0
+            return 0.01
 
         correct = sum(
             1 for pred, truth in zip(decisions, GROUND_TRUTH)
             if pred == truth
         )
 
-        return round(correct / len(GROUND_TRUTH), 4)
+        score = correct / len(GROUND_TRUTH)
+
+        if score <= 0.0:
+            score = 0.01
+        elif score >= 1.0:
+            score = 0.99
+
+        return round(score, 4)

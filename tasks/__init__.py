@@ -1,6 +1,6 @@
-from .easy import EasyTask
-from .medium import MediumTask
-from .hard import HardTask
+from tasks.easy import EasyTask
+from tasks.medium import MediumTask
+from tasks.hard import HardTask
 
 TASKS = {
     "easy": EasyTask(),
