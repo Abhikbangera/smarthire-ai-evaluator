@@ -67,8 +67,8 @@ class EasyTask:
         score = correct / len(GROUND_TRUTH)
 
         if score <= 0.0:
-            score = 0.01
+            score = 0
         elif score >= 1.0:
-            score = 0.99
+            score = 1
 
         return round(score, 4)
