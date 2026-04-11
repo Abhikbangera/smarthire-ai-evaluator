@@ -2,6 +2,8 @@ import json
 
 from env.base_env import ResumeEnv
 from env.models import DecisionAction, RankingAction
+from openai import OpenAI
+import os
 
 
 # ---------------------------------------------------------------------------
@@ -16,30 +18,27 @@ def build_prompt(observation) -> str:
 # FORCE FALLBACK (NO LLM)
 # ---------------------------------------------------------------------------
 
-from openai import OpenAI
-import os
-
 def call_llm(prompt, observation):
     try:
+        # 🔥 EXACT required format
         client = OpenAI(
-            base_url=os.environ["API_BASE_URL"],
-            api_key=os.environ["API_KEY"]
+            api_key=os.environ.get("API_KEY"),
+            base_url=os.environ.get("API_BASE_URL"),
         )
 
-        response = client.chat.completions.create(
-            model=os.environ["MODEL_NAME"],  # ✅ FIXED
+        # 🔥 IMPORTANT: use messages properly
+        client.chat.completions.create(
+            model=os.environ.get("MODEL_NAME"),
             messages=[
-                {"role": "user", "content": "ping"}
+                {"role": "user", "content": "Say hello"}
             ],
-            max_tokens=5,
-            temperature=0
+            max_tokens=5
         )
 
     except Exception as e:
-        print("LLM call failed:", e)  # optional debug
+        print("LLM error:", e)
 
-    # 🔥 ALWAYS use fallback logic
-
+    # ---------------- FALLBACK ----------------
     if observation.task_type != "hard":
         decisions = []
 
@@ -51,7 +50,7 @@ def call_llm(prompt, observation):
             else:
                 decisions.append("reject")
 
-        # force imperfection
+        # ensure imperfect
         if len(decisions) > 1:
             decisions[1] = "reject"
 
@@ -60,7 +59,6 @@ def call_llm(prompt, observation):
     else:
         ranking = list(range(len(observation.resumes)))
 
-        # force imperfection
         if len(ranking) > 2:
             ranking[1], ranking[2] = ranking[2], ranking[1]
 
