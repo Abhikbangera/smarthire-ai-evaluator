@@ -66,7 +66,6 @@ class EasyTask:
 
         score = correct / len(GROUND_TRUTH)
 
-        # enforce strictly (0, 1) — 0.0 and 1.0 are not allowed
         if score <= 0.0:
             score = 0.01
         elif score >= 1.0:
