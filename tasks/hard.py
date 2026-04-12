@@ -55,10 +55,9 @@ class HardTask:
 
         score = correct / len(GROUND_TRUTH)
 
-        # 🔥 clamp
         if score <= 0:
-            return 0.01
-        if score >= 1:
-            return 0.99
+            score = 0.01
+        elif score >= 1:
+            score = 0.99
 
         return round(score, 4)

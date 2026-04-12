@@ -1,6 +1,9 @@
-from typing import List, Literal, Optional, Union
+from __future__ import annotations
 
-from pydantic import BaseModel, Field
+import json
+from typing import List, Optional
+
+from pydantic import BaseModel, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -8,25 +11,82 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 class Observation(BaseModel):
-    task_type: Literal["easy", "medium", "hard"]
+    """
+    The observation returned by ResumeEnv.reset().
+
+    Attributes:
+        task_type       : "easy", "medium", or "hard"
+        instruction     : Natural-language grading instruction for the agent
+        job_description : The job description text
+        resumes         : Ordered list of resume strings
+    """
+
+    task_type: str
     instruction: str
     job_description: str
     resumes: List[str]
 
+    @field_validator("task_type")
+    @classmethod
+    def validate_task_type(cls, v: str) -> str:
+        allowed = {"easy", "medium", "hard"}
+        if v not in allowed:
+            raise ValueError(f"task_type must be one of {allowed}, got '{v}'")
+        return v
+
+    def model_dump_json(self, **kwargs) -> str:
+        return json.dumps({
+            "task_type": self.task_type,
+            "instruction": self.instruction,
+            "job_description": self.job_description,
+            "resumes": self.resumes,
+        })
+
 
 # ---------------------------------------------------------------------------
-# Action
+# Actions
 # ---------------------------------------------------------------------------
 
 class DecisionAction(BaseModel):
-    decisions: List[Literal["reject", "maybe", "shortlist"]]
+    """
+    Action for easy / medium tasks.
+
+    Attributes:
+        decisions : List of per-resume decisions.
+                    Each value must be "shortlist", "maybe", or "reject".
+    """
+
+    decisions: List[str]
+
+    @field_validator("decisions")
+    @classmethod
+    def validate_decisions(cls, v: List[str]) -> List[str]:
+        allowed = {"shortlist", "maybe", "reject"}
+        cleaned = []
+        for d in v:
+            if d not in allowed:
+                cleaned.append("reject")   # normalise unknown values
+            else:
+                cleaned.append(d)
+        return cleaned
+
+    def model_dump_json(self, **kwargs) -> str:
+        return json.dumps({"decisions": self.decisions})
 
 
 class RankingAction(BaseModel):
+    """
+    Action for the hard task.
+
+    Attributes:
+        ranking : Ordered list of resume indices from best to worst fit.
+                  Must be a permutation of range(n).
+    """
+
     ranking: List[int]
 
-
-Action = Union[DecisionAction, RankingAction]
+    def model_dump_json(self, **kwargs) -> str:
+        return json.dumps({"ranking": self.ranking})
 
 
 # ---------------------------------------------------------------------------
@@ -34,27 +94,25 @@ Action = Union[DecisionAction, RankingAction]
 # ---------------------------------------------------------------------------
 
 class Reward(BaseModel):
-    score: float = Field(..., ge=0.0, le=1.0)
-    reasoning: str
+    """
+    Reward returned by ResumeEnv.step().
 
+    Attributes:
+        score : Float strictly in the open interval (0, 1).
+                Never exactly 0.0 or 1.0 — the platform rejects those.
+    """
 
-# ---------------------------------------------------------------------------
-# Step result
-# ---------------------------------------------------------------------------
+    score: float
 
-class StepResult(BaseModel):
-    observation: Observation
-    reward: Reward
-    done: bool
-    info: dict
+    @field_validator("score")
+    @classmethod
+    def validate_score(cls, v: float) -> float:
+        if v <= 0.0 or v >= 1.0:
+            raise ValueError(
+                f"Reward score must be strictly between 0 and 1, got {v}. "
+                "Use base_env._clamp() before constructing Reward."
+            )
+        return round(float(v), 4)
 
-
-# ---------------------------------------------------------------------------
-# Environment state
-# ---------------------------------------------------------------------------
-
-class EnvironmentState(BaseModel):
-    current_task: Optional[Literal["easy", "medium", "hard"]]
-    step_count: int
-    last_reward: Optional[float]
-    done: bool
+    def model_dump_json(self, **kwargs) -> str:
+        return json.dumps({"score": self.score})
