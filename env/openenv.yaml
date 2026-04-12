@@ -1,0 +1,77 @@
+name: resume-screening-env
+version: "1.0.0"
+description: >
+  A single-step resume screening environment where an agent reviews
+  synthetic job applications and makes hiring decisions or rankings.
+  Supports three difficulty levels: easy, medium, and hard.
+
+entry_point: env.base_env:ResumeEnv
+
+tasks:
+  - name: easy
+    description: >
+      Keyword-based filtering. Shortlist candidates who explicitly mention
+      Python. Reject unrelated profiles. Use maybe for borderline cases.
+    resumes: 3
+    action_type: decisions
+    scoring: exact_match
+
+  - name: medium
+    description: >
+      Skill matching with partial credit. Shortlist strong matches,
+      maybe for partial skill overlap, reject for irrelevant profiles.
+    resumes: 5
+    action_type: decisions
+    scoring: partial_credit
+
+  - name: hard
+    description: >
+      Rank all candidates from most to least suitable based on skills,
+      experience, and seniority.
+    resumes: 5
+    action_type: ranking
+    scoring: position_match
+
+observation:
+  fields:
+    - name: task_type
+      type: string
+      enum: [easy, medium, hard]
+    - name: instruction
+      type: string
+    - name: job_description
+      type: string
+    - name: resumes
+      type: list[string]
+
+action:
+  variants:
+    - name: DecisionAction
+      fields:
+        - name: decisions
+          type: list[string]
+          enum: [shortlist, maybe, reject]
+    - name: RankingAction
+      fields:
+        - name: ranking
+          type: list[int]
+
+reward:
+  fields:
+    - name: score
+      type: float
+      range: [0.0, 1.0]
+    - name: reasoning
+      type: string
+
+environment:
+  episodic: true
+  max_steps: 1
+  deterministic: true
+  randomness: false
+
+api:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+  port: 7860
