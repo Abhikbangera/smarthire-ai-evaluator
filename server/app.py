@@ -1,95 +1,133 @@
-from fastapi import FastAPI, APIRouter, Body
-from env.base_env import ResumeEnv
-from tasks import TASKS
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
 import uvicorn
 
+from env.base_env import ResumeEnv
 
-app = FastAPI()
+app = FastAPI(title="Resume Screening OpenEnv")
 
-# Router with required prefix
-router = APIRouter(prefix="/openenv")
+# ---------------------------------------------------------------------------
+# Global state — one env instance shared across requests
+# ---------------------------------------------------------------------------
 
-env = None
+_env: Optional[ResumeEnv] = None
+_last_reward_score: Optional[float] = None
+_step_count: int = 0
+_done: bool = False
 
-# -------------------------------
-# RESET (BODY OPTIONAL)
-# -------------------------------
-# RESET (both paths)
+
+# ---------------------------------------------------------------------------
+# Request / Response schemas
+# ---------------------------------------------------------------------------
+
+class ResetRequest(BaseModel):
+    task: str  # "easy" | "medium" | "hard"
+
+class StepRequest(BaseModel):
+    decisions: Optional[List[str]] = None  # easy / medium
+    ranking:   Optional[List[int]] = None  # hard
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
 @app.post("/reset")
-@router.post("/reset")
-@router.post("/reset/")
-def reset(data: dict = Body(default={})):
-    global env
+def reset(request: ResetRequest):
+    """
+    Initialize (or re-initialize) the environment for the given task.
+    Returns the initial observation.
+    """
+    global _env, _last_reward_score, _step_count, _done
 
-    if not isinstance(data, dict):
-        data = {}
+    task = request.task.lower().strip()
+    if task not in ("easy", "medium", "hard"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid task '{task}'. Must be 'easy', 'medium', or 'hard'."
+        )
 
-    task_name = data.get("task", "easy")
-
-    if task_name not in TASKS:
-        task_name = "easy"
-
-    env = ResumeEnv(task_name)
-    observation = env.reset()
+    _env = ResumeEnv(task_type=task)
+    observation = _env.reset()
+    _last_reward_score = None
+    _step_count = 0
+    _done = False
 
     return {
-        "observation": observation.model_dump()
+        "observation": {
+            "task_type":       observation.task_type,
+            "instruction":     observation.instruction,
+            "job_description": observation.job_description,
+            "resumes":         observation.resumes,
+        }
     }
 
 
-# -------------------------------
-# STEP (BODY OPTIONAL)
-# -------------------------------
 @app.post("/step")
-@router.post("/step")
-@router.post("/step/")
-def step(action: dict = Body(default={})):
-    global env
+def step(request: StepRequest):
+    """
+    Submit the agent's action and receive a reward.
+    """
+    global _env, _last_reward_score, _step_count, _done
 
-    if env is None:
-        return {"error": "Call /reset first"}
+    if _env is None:
+        raise HTTPException(status_code=400, detail="Call /reset before /step.")
 
-    if not isinstance(action, dict):
-        action = {}
+    # Build the correct action type based on what was provided
+    from env.models import DecisionAction, RankingAction
 
-    obs, reward, done, info = env.step(action)
+    if request.decisions is not None:
+        action = DecisionAction(decisions=request.decisions)
+    elif request.ranking is not None:
+        action = RankingAction(ranking=request.ranking)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either 'decisions' (easy/medium) or 'ranking' (hard)."
+        )
+
+    observation, reward, done, info = _env.step(action)
+
+    _last_reward_score = reward.score
+    _step_count += 1
+    _done = done
 
     return {
-        "observation": obs.model_dump(),
-        "reward": reward.model_dump(),
+        "observation": None,
+        "reward": {
+            "score": reward.score,
+        },
         "done": done,
         "info": info,
     }
 
 
-# -------------------------------
-# STATE
-# -------------------------------
 @app.get("/state")
-@router.get("/state")
-@router.get("/state/")
 def state():
-    global env
-
-    if env is None:
-        return {"error": "No active environment"}
-
-    return env.state()
-
-
-# -------------------------------
-# ROOT (optional)
-# -------------------------------
-@app.get("/")
-def root():
-    return {"message": "API is running"}
+    """
+    Return current environment state (for debugging / monitoring).
+    """
+    return {
+        "current_task":  _env.task_type if _env else None,
+        "step_count":    _step_count,
+        "last_reward":   _last_reward_score,
+        "done":          _done,
+    }
 
 
-# Attach router
-app.include_router(router)
+@app.get("/health")
+def health():
+    """Health check — used by the platform to verify the server is up."""
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
 
 
 if __name__ == "__main__":
