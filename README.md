@@ -52,14 +52,14 @@ resume_openenv/
 | Task   | Resumes | Action Type | Scoring        |
 |--------|---------|-------------|----------------|
 | easy   | 3       | decisions   | exact match    |
-| medium | 5       | decisions   | partial credit |
+| medium | 3       | decisions   | partial credit |
 | hard   | 5       | ranking     | position match |
 
 ### Scoring
 
-- **Easy** — `correct_decisions / total_resumes` (0.0 to 1.0)
-- **Medium** — partial credit: exact label = `1.0`, adjacent label = `0.5`, opposite = `0.0`
-- **Hard** — `correct_positions / total_resumes` (0.0 to 1.0)
+- **Easy** — `correct_decisions / total_resumes`, clamped to stay strictly within `(0, 1)`
+- **Medium** — partial credit: exact label = `1.0`, adjacent label = `0.5`, opposite = `0.0`, then clamped to stay strictly within `(0, 1)`
+- **Hard** — `correct_positions / total_resumes`, clamped to stay strictly within `(0, 1)`
 
 ---
 

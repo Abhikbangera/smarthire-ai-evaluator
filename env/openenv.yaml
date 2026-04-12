@@ -20,7 +20,7 @@ tasks:
     description: >
       Skill matching with partial credit. Shortlist strong matches,
       maybe for partial skill overlap, reject for irrelevant profiles.
-    resumes: 5
+    resumes: 3
     action_type: decisions
     scoring: partial_credit
 
@@ -60,7 +60,7 @@ reward:
   fields:
     - name: score
       type: float
-      range: [0.0, 1.0]
+      range: [0.01, 0.99]
     - name: reasoning
       type: string
 

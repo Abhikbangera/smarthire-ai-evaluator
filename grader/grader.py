@@ -15,7 +15,7 @@ def run_task(task_type: str, agent=None) -> float:
         agent: callable(observation) -> action. Defaults to baseline_agent.act.
 
     Returns:
-        score as float between 0.0 and 1.0
+        score as float strictly between 0.0 and 1.0
     """
     if agent is None:
         agent = act
@@ -23,8 +23,8 @@ def run_task(task_type: str, agent=None) -> float:
     env = ResumeEnv(task_type=task_type)
     observation = env.reset()
     action = agent(observation)
-    result = env.step(action)
-    return result.reward.score
+    _, reward, _, _ = env.step(action)
+    return reward.score
 
 
 # ---------------------------------------------------------------------------
