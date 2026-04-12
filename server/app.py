@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
@@ -21,9 +21,6 @@ _done: bool = False
 # Request / Response schemas
 # ---------------------------------------------------------------------------
 
-class ResetRequest(BaseModel):
-    task: str  # "easy" | "medium" | "hard"
-
 class StepRequest(BaseModel):
     decisions: Optional[List[str]] = None  # easy / medium
     ranking:   Optional[List[int]] = None  # hard
@@ -34,19 +31,25 @@ class StepRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @app.post("/reset")
-def reset(request: ResetRequest):
+async def reset(request: Request):
     """
     Initialize (or re-initialize) the environment for the given task.
-    Returns the initial observation.
+    Accepts: {"task": "easy"} | {"task": "medium"} | {"task": "hard"}
+    Also handles empty body — defaults to "easy".
     """
     global _env, _last_reward_score, _step_count, _done
 
-    task = request.task.lower().strip()
+    # Safely parse body — platform may send empty body or no Content-Type
+    task = "easy"  # safe default
+    try:
+        body = await request.json()
+        if isinstance(body, dict) and body.get("task"):
+            task = str(body["task"]).lower().strip()
+    except Exception:
+        pass  # empty or non-JSON body — use default
+
     if task not in ("easy", "medium", "hard"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid task '{task}'. Must be 'easy', 'medium', or 'hard'."
-        )
+        task = "easy"  # silently fall back instead of erroring
 
     _env = ResumeEnv(task_type=task)
     observation = _env.reset()
@@ -65,7 +68,7 @@ def reset(request: ResetRequest):
 
 
 @app.post("/step")
-def step(request: StepRequest):
+async def step(request: Request):
     """
     Submit the agent's action and receive a reward.
     """
@@ -74,13 +77,22 @@ def step(request: StepRequest):
     if _env is None:
         raise HTTPException(status_code=400, detail="Call /reset before /step.")
 
-    # Build the correct action type based on what was provided
     from env.models import DecisionAction, RankingAction
 
-    if request.decisions is not None:
-        action = DecisionAction(decisions=request.decisions)
-    elif request.ranking is not None:
-        action = RankingAction(ranking=request.ranking)
+    # Safely parse body
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+
+    decisions = body.get("decisions") if isinstance(body, dict) else None
+    ranking   = body.get("ranking")   if isinstance(body, dict) else None
+
+    if decisions is not None:
+        action = DecisionAction(decisions=decisions)
+    elif ranking is not None:
+        action = RankingAction(ranking=ranking)
     else:
         raise HTTPException(
             status_code=400,
@@ -95,9 +107,7 @@ def step(request: StepRequest):
 
     return {
         "observation": None,
-        "reward": {
-            "score": reward.score,
-        },
+        "reward": {"score": reward.score},
         "done": done,
         "info": info,
     }
@@ -105,20 +115,18 @@ def step(request: StepRequest):
 
 @app.get("/state")
 def state():
-    """
-    Return current environment state (for debugging / monitoring).
-    """
+    """Return current environment state."""
     return {
-        "current_task":  _env.task_type if _env else None,
-        "step_count":    _step_count,
-        "last_reward":   _last_reward_score,
-        "done":          _done,
+        "current_task": _env.task_type if _env else None,
+        "step_count":   _step_count,
+        "last_reward":  _last_reward_score,
+        "done":         _done,
     }
 
 
 @app.get("/health")
 def health():
-    """Health check — used by the platform to verify the server is up."""
+    """Health check."""
     return {"status": "ok"}
 
 
