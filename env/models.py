@@ -34,7 +34,7 @@ Action = Union[DecisionAction, RankingAction]
 # ---------------------------------------------------------------------------
 
 class Reward(BaseModel):
-    score: float = Field(..., gt=0.0, lt=1.0)
+    score: float = Field(..., gt=0.011, lt=0.989)
     reasoning: str
 
 
