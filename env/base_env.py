@@ -12,10 +12,12 @@ from tasks import TASKS
 
 
 def _clamp_score_strict(score: float) -> float:
-    rounded = round(score, 4)
-    if rounded < 0.01:
+    if not isinstance(score, (int, float)):
         return 0.01
-    if rounded > 0.99:
+    rounded = round(float(score), 4)
+    if rounded <= 0.0 or rounded < 0.01:
+        return 0.01
+    if rounded >= 1.0 or rounded > 0.99:
         return 0.99
     return rounded
 
@@ -49,6 +51,13 @@ class ResumeEnv:
     def step(self, action):
         raw_score = self._task.grade(action)
         score = _clamp_score_strict(raw_score)
+        
+        # Ensure score is strictly between 0 and 1
+        if score <= 0.0:
+            score = 0.01
+        elif score >= 1.0:
+            score = 0.99
+        score = round(score, 4)
 
         from env.models import Reward
 
