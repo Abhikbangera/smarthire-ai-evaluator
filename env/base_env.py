@@ -13,9 +13,9 @@ from tasks import TASKS
 
 def _clamp_score_strict(score: float) -> float:
     rounded = round(score, 4)
-    if rounded <= 0.0:
+    if rounded < 0.01:
         return 0.01
-    if rounded >= 1.0:
+    if rounded > 0.99:
         return 0.99
     return rounded
 
