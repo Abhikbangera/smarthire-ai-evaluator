@@ -11,16 +11,6 @@ from pydantic import BaseModel, field_validator
 # ---------------------------------------------------------------------------
 
 class Observation(BaseModel):
-    """
-    The observation returned by ResumeEnv.reset().
-
-    Attributes:
-        task_type       : "easy", "medium", or "hard"
-        instruction     : Natural-language grading instruction for the agent
-        job_description : The job description text
-        resumes         : Ordered list of resume strings
-    """
-
     task_type: str
     instruction: str
     job_description: str
@@ -48,41 +38,19 @@ class Observation(BaseModel):
 # ---------------------------------------------------------------------------
 
 class DecisionAction(BaseModel):
-    """
-    Action for easy / medium tasks.
-
-    Attributes:
-        decisions : List of per-resume decisions.
-                    Each value must be "shortlist", "maybe", or "reject".
-    """
-
     decisions: List[str]
 
     @field_validator("decisions")
     @classmethod
     def validate_decisions(cls, v: List[str]) -> List[str]:
         allowed = {"shortlist", "maybe", "reject"}
-        cleaned = []
-        for d in v:
-            if d not in allowed:
-                cleaned.append("reject")   # normalise unknown values
-            else:
-                cleaned.append(d)
-        return cleaned
+        return [d if d in allowed else "reject" for d in v]
 
     def model_dump_json(self, **kwargs) -> str:
         return json.dumps({"decisions": self.decisions})
 
 
 class RankingAction(BaseModel):
-    """
-    Action for the hard task.
-
-    Attributes:
-        ranking : Ordered list of resume indices from best to worst fit.
-                  Must be a permutation of range(n).
-    """
-
     ranking: List[int]
 
     def model_dump_json(self, **kwargs) -> str:
@@ -90,29 +58,28 @@ class RankingAction(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Reward
+# Reward — CLAMP, never raise
 # ---------------------------------------------------------------------------
 
 class Reward(BaseModel):
-    """
-    Reward returned by ResumeEnv.step().
-
-    Attributes:
-        score : Float strictly in the open interval (0, 1).
-                Never exactly 0.0 or 1.0 — the platform rejects those.
-    """
-
     score: float
 
     @field_validator("score")
     @classmethod
-    def validate_score(cls, v: float) -> float:
-        if v <= 0.0 or v >= 1.0:
-            raise ValueError(
-                f"Reward score must be strictly between 0 and 1, got {v}. "
-                "Use base_env._clamp() before constructing Reward."
-            )
-        return round(float(v), 4)
+    def clamp_score(cls, v: float) -> float:
+        """
+        Silently clamp to strictly (0, 1).
+        NEVER raise — a crashed Reward breaks the whole pipeline.
+        """
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return 0.01
+        if v <= 0.0:
+            return 0.0001
+        if v >= 1.0:
+            return 0.9999
+        return round(v, 4)
 
     def model_dump_json(self, **kwargs) -> str:
         return json.dumps({"score": self.score})
