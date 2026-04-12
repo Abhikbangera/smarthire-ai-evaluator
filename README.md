@@ -1,12 +1,3 @@
----
-title: Resume Screening Environment
-emoji: 🧠
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
----
 # Resume Screening Environment
 
 A single-step, OpenEnv-compliant environment for evaluating LLM agents on resume screening tasks.
