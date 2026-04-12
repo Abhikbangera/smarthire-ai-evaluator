@@ -38,15 +38,15 @@ class HardTask:
 
     def grade(self, action) -> float:
         if not hasattr(action, "ranking") or action.ranking is None:
-            return 0.5
+            return 0.01
 
         ranking = action.ranking
 
         if len(ranking) != len(GROUND_TRUTH):
-            return 0.5
+            return 0.01
 
         if sorted(ranking) != list(range(len(GROUND_TRUTH))):
-            return 0.5
+            return 0.01
 
         correct = sum(
             1 for i, j in enumerate(ranking)
@@ -55,9 +55,9 @@ class HardTask:
 
         score = correct / len(GROUND_TRUTH)
 
-        if score <= 0:
+        if score < 0.01:
             score = 0.01
-        elif score >= 1:
+        elif score > 0.99:
             score = 0.99
 
         return round(score, 4)
