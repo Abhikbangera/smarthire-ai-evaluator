@@ -1,31 +1,20 @@
 from fastapi import FastAPI, APIRouter, Body
 from env.base_env import ResumeEnv
-from env.models import DecisionAction, RankingAction
 from tasks import TASKS
 import uvicorn
 
 
 app = FastAPI()
+
+# Router with required prefix
 router = APIRouter(prefix="/openenv")
 
 env = None
 
-
-def _build_action(action_dict: dict, task_type: str):
-    """Convert raw dict from request body into the correct Action model."""
-    if task_type == "hard":
-        ranking = action_dict.get("ranking", list(range(5)))
-        return RankingAction(ranking=ranking)
-    else:
-        decisions = action_dict.get("decisions", [])
-        valid = {"shortlist", "maybe", "reject"}
-        decisions = [d if d in valid else "reject" for d in decisions]
-        return DecisionAction(decisions=decisions)
-
-
 # -------------------------------
-# RESET
+# RESET (BODY OPTIONAL)
 # -------------------------------
+# RESET (both paths)
 @app.post("/reset")
 @router.post("/reset")
 @router.post("/reset/")
@@ -36,32 +25,32 @@ def reset(data: dict = Body(default={})):
         data = {}
 
     task_name = data.get("task", "easy")
+
     if task_name not in TASKS:
         task_name = "easy"
 
     env = ResumeEnv(task_name)
     observation = env.reset()
 
-    return {"observation": observation.model_dump()}
+    return {
+        "observation": observation.model_dump()
+    }
 
 
 # -------------------------------
-# STEP
+# STEP (BODY OPTIONAL)
 # -------------------------------
 @app.post("/step")
 @router.post("/step")
 @router.post("/step/")
-def step(action_dict: dict = Body(default={})):
+def step(action: dict = Body(default={})):
     global env
 
     if env is None:
         return {"error": "Call /reset first"}
 
-    if not isinstance(action_dict, dict):
-        action_dict = {}
-
-    # Convert dict → proper Action model before passing to env
-    action = _build_action(action_dict, env._task_type)
+    if not isinstance(action, dict):
+        action = {}
 
     obs, reward, done, info = env.step(action)
 
@@ -89,15 +78,15 @@ def state():
 
 
 # -------------------------------
-# ROOT
+# ROOT (optional)
 # -------------------------------
 @app.get("/")
 def root():
     return {"message": "API is running"}
 
 
+# Attach router
 app.include_router(router)
-
 
 def main():
     uvicorn.run(app, host="0.0.0.0", port=7860)
