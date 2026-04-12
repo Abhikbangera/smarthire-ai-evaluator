@@ -11,6 +11,15 @@ from env.models import (
 from tasks import TASKS
 
 
+def _clamp_score_strict(score: float) -> float:
+    rounded = round(score, 4)
+    if rounded <= 0.0:
+        return 0.01
+    if rounded >= 1.0:
+        return 0.99
+    return rounded
+
+
 class ResumeEnv:
     def __init__(self, task_type: str):
         if task_type not in TASKS:
@@ -38,7 +47,8 @@ class ResumeEnv:
     # ------------------------------------------------------------------
 
     def step(self, action):
-        score = self._task.grade(action)
+        raw_score = self._task.grade(action)
+        score = _clamp_score_strict(raw_score)
 
         from env.models import Reward
 
